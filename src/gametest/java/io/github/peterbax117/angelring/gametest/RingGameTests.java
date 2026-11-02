@@ -4,6 +4,7 @@ import io.github.peterbax117.angelring.AngelRing;
 import io.github.peterbax117.angelring.RingFlight;
 import io.github.peterbax117.modtestharness.gametest.HarnessTemplates;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -14,11 +15,14 @@ import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.BundleContents;
+import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.GameType;
 import net.neoforged.neoforge.common.NeoForgeMod;
 import net.neoforged.neoforge.common.util.FakePlayer;
+import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -155,6 +159,25 @@ public class RingGameTests
     }
 
     @GameTest(template = TEMPLATE)
+    public static void ringInsideContainerItemsDoesNotGrantFlight(GameTestHelper helper) {
+        // Confirmed design: a ring stored inside a backpack, bundle or shulker box does not count.
+        FakePlayer bundleCarrier = player(helper);
+        ItemStack bundle = new ItemStack(Items.BUNDLE);
+        bundle.set(DataComponents.BUNDLE_CONTENTS, new BundleContents(List.of(new ItemStack(AngelRing.ANGEL_RING.get()))));
+        bundleCarrier.getInventory().setItem(4, bundle);
+        RingFlight.update(bundleCarrier);
+        helper.assertFalse(bundleCarrier.mayFly(), "A ring inside a bundle must not grant flight");
+
+        FakePlayer boxCarrier = player(helper);
+        ItemStack box = new ItemStack(Items.SHULKER_BOX);
+        box.set(DataComponents.CONTAINER, ItemContainerContents.fromItems(List.of(new ItemStack(AngelRing.ANGEL_RING.get()))));
+        boxCarrier.getInventory().setItem(4, box);
+        RingFlight.update(boxCarrier);
+        helper.assertFalse(boxCarrier.mayFly(), "A ring inside a shulker box must not grant flight");
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE)
     public static void recipeCraftsRing(GameTestHelper helper) {
         ItemStack glass = new ItemStack(Items.GLASS);
         ItemStack gold = new ItemStack(Items.GOLD_INGOT);
@@ -164,9 +187,30 @@ public class RingGameTests
                 new ItemStack(Items.GHAST_TEAR), new ItemStack(Items.ELYTRA), new ItemStack(Items.GHAST_TEAR)));
 
         var recipe = helper.getLevel().getRecipeManager().getRecipeFor(RecipeType.CRAFTING, input, helper.getLevel());
+        if(ModList.get().isLoaded("crafttweaker")) {
+            // The -Pcrafttweaker run's sample script removes the default recipe.
+            helper.assertFalse(recipe.isPresent(), "CraftTweaker script should have removed the default recipe");
+            helper.succeed();
+            return;
+        }
         helper.assertTrue(recipe.isPresent(), "Angel ring recipe should match");
         ItemStack result = recipe.get().value().assemble(input, helper.getLevel().registryAccess());
         helper.assertTrue(result.is(AngelRing.ANGEL_RING.get()), "Recipe should make the angel ring, made " + result);
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE)
+    public static void craftTweakerScriptReplacesRecipe(GameTestHelper helper) {
+        // Pack makers change recipes with CraftTweaker or KubeJS. src/crafttweaker/scripts/angelring_test.zs adds
+        // feather + gold block -> ring; without CraftTweaker that combination must not craft anything.
+        CraftingInput input = CraftingInput.of(2, 1, List.of(new ItemStack(Items.FEATHER), new ItemStack(Items.GOLD_BLOCK)));
+        var recipe = helper.getLevel().getRecipeManager().getRecipeFor(RecipeType.CRAFTING, input, helper.getLevel());
+        boolean crafttweaker = ModList.get().isLoaded("crafttweaker");
+        helper.assertValueEqual(recipe.isPresent(), crafttweaker, "feather + gold block recipe present");
+        if(crafttweaker) {
+            ItemStack result = recipe.get().value().assemble(input, helper.getLevel().registryAccess());
+            helper.assertTrue(result.is(AngelRing.ANGEL_RING.get()), "Script recipe should make the angel ring, made " + result);
+        }
         helper.succeed();
     }
 

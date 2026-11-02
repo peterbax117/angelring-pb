@@ -10,6 +10,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
+import net.neoforged.fml.ModList;
 import top.theillusivec4.curios.api.CuriosApi;
 
 import static io.github.peterbax117.modtestharness.client.ClientTestContext.check;
@@ -67,6 +68,13 @@ public final class RingClientTests
         doubleTapJump(ctx);
         ctx.await("client player to start flying", () -> ctx.mc().player.getAbilities().flying);
         ctx.await("server to accept flying", () -> ctx.onServer(p -> p.getAbilities().flying));
+    }
+
+    @ClientTest(value = "JEI shows an info page for the ring (when JEI is installed)", order = 4)
+    public static void jeiInfoPage(ClientTestContext ctx) {
+        if(!ModList.get().isLoaded("jei")) return;
+        ctx.await("JEI runtime to be available", 60, () -> JeiProbe.ready());
+        check(ctx.onClient(() -> JeiProbe.ringHasInfoPage()), "JEI should list an information page for the Angel Ring");
     }
 
     // Helpers

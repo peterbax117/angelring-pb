@@ -30,18 +30,31 @@ removing the ring never takes away flight that something else granted. No extra 
 
 Minecraft 1.21.1, NeoForge 21.1.x. Curios 9.x is optional.
 
+## Integrations
+
+The mod works fully by itself; every integration only adds to it.
+
+| Mod | Integration |
+|---|---|
+| Curios | The `ring` slot is one more place to wear the ring |
+| JEI | Information page describing the ring |
+| CraftTweaker, KubeJS | The recipe is a standard data recipe with common tags, so pack makers can replace or remove it |
+| Backpacks, bundles, shulker boxes | A ring stored inside them does **not** grant flight (by design) |
+
 ## Building and testing
 
 ```
-gradlew build                          # mod jar in build/libs
-gradlew runGameTestServer              # server-side tests, with Curios
-gradlew runGameTestServer -PnoCurios   # same tests without Curios
-gradlew clientTest                     # real client: double-tap flight in survival
-gradlew clientTest -PnoCurios
+gradlew build                                 # mod jar in build/libs
+gradlew runGameTestServer -Pstandalone        # server tests, no optional mods
+gradlew runGameTestServer                     # with Curios and JEI
+gradlew runGameTestServer -Pcrafttweaker      # plus CraftTweaker and a sample recipe-replacing script
+gradlew clientTest -Pstandalone               # real client: double-tap flight in survival
+gradlew clientTest                            # with Curios and JEI (also checks the JEI info page)
 ```
 
 Tests use [neoforge-mod-test-harness](https://github.com/peterbax117/neoforge-mod-test-harness), cloned next to
-this repository. Without it the mod still builds; only the test tasks are missing.
+this repository. Without it the mod still builds; only the test tasks are missing. CI runs the three setups as a
+matrix.
 
 ## Credits
 

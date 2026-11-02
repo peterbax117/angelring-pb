@@ -16,10 +16,20 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        curios: [with-curios, without-curios]
-    name: test (${{ matrix.curios }})
-    env:
-      CURIOS_FLAG: ${{ matrix.curios == 'without-curios' && '-PnoCurios' || '' }}
+        include:
+          # No optional mods: the configuration every player has. Required by the standalone-first rule.
+          - setup: standalone
+            flag: -Pstandalone
+            client: true
+          # Curios + JEI, the integrations the mod supports.
+          - setup: integrations
+            flag: ''
+            client: true
+          # Pack-maker scenario: CraftTweaker script replaces the recipe (server side only).
+          - setup: crafttweaker
+            flag: -Pcrafttweaker
+            client: false
+    name: test (${{ matrix.setup }})
     steps:
       - uses: actions/checkout@v7
 
@@ -39,23 +49,25 @@ jobs:
         run: ./gradlew build
 
       - name: Run GameTests
-        run: ./gradlew runGameTestServer $CURIOS_FLAG
+        run: ./gradlew runGameTestServer ${{ matrix.flag }}
 
       - name: Install virtual display
+        if: matrix.client
         run: sudo apt-get update && sudo apt-get install -y xvfb libgl1-mesa-dri
 
       - name: Run client tests
-        run: xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew clientTest $CURIOS_FLAG
+        if: matrix.client
+        run: xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew clientTest ${{ matrix.flag }}
 
-      - if: always()
+      - if: always() && matrix.client
         uses: actions/upload-artifact@v7
         with:
-          name: client-test-report-${{ matrix.curios }}
+          name: client-test-report-${{ matrix.setup }}
           path: |
             build/clienttest/report.txt
             run/clienttest/logs/latest.log
 
-      - if: matrix.curios == 'with-curios'
+      - if: matrix.setup == 'standalone'
         uses: actions/upload-artifact@v7
         with:
           name: angelring_pb

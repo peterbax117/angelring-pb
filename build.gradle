@@ -18,6 +18,10 @@ repositories {
         name = 'Curios'
         url = 'https://maven.theillusivec4.top/'
     }
+    maven {
+        name = 'BlameJared (JEI, CraftTweaker)'
+        url = 'https://maven.blamejared.com'
+    }
 }
 
 neoForge {
@@ -53,9 +57,13 @@ configurations {
 }
 
 dependencies {
-    // Curios is optional: compile against its API only. Code that touches it is loaded only when Curios is present.
+    // Curios and JEI are optional: compile against their APIs only. Code that touches them is loaded only when
+    // the mod is present (CuriosCompat is guarded by ModList; JEI discovers AngelRingJeiPlugin itself).
     compileOnly "top.theillusivec4.curios:curios-neoforge:${curios_version}:api"
     localRuntime "top.theillusivec4.curios:curios-neoforge:${curios_version}"
+    compileOnly "mezz.jei:jei-${minecraft_version}-common-api:${jei_version}"
+    compileOnly "mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}"
+    localRuntime "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
 }
 
 var generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
@@ -86,15 +94,37 @@ def harnessDir = file(System.getenv('MOD_TEST_HARNESS_DIR') ?: '../neoforge-mod-
 if(harnessDir.isDirectory()) {
     apply from: new File(harnessDir, 'gradle/test-harness.gradle')
 
-    // Tests run with Curios by default. Pass -PnoCurios to test the inventory fallback without it.
-    if(!project.hasProperty('noCurios')) {
-        dependencies {
-            gametestRuntimeOnly "top.theillusivec4.curios:curios-neoforge:${curios_version}"
-            clienttestRuntimeOnly "top.theillusivec4.curios:curios-neoforge:${curios_version}"
-        }
-    }
+    // Test configurations (see README):
+    //   default         Curios + JEI
+    //   -Pstandalone    no optional mods: the configuration every player has
+    //   -Pcrafttweaker  default plus CraftTweaker and a sample pack-maker script that replaces the recipe
+    def standalone = project.hasProperty('standalone')
+    def crafttweaker = project.hasProperty('crafttweaker')
     dependencies {
         gametestCompileOnly "top.theillusivec4.curios:curios-neoforge:${curios_version}:api"
         clienttestCompileOnly "top.theillusivec4.curios:curios-neoforge:${curios_version}:api"
+        clienttestCompileOnly "mezz.jei:jei-${minecraft_version}-common-api:${jei_version}"
+        if(!standalone) {
+            gametestRuntimeOnly "top.theillusivec4.curios:curios-neoforge:${curios_version}"
+            clienttestRuntimeOnly "top.theillusivec4.curios:curios-neoforge:${curios_version}"
+            gametestRuntimeOnly "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
+            clienttestRuntimeOnly "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
+        }
+        if(crafttweaker) {
+            gametestRuntimeOnly "com.blamejared.crafttweaker:CraftTweaker-neoforge-${minecraft_version}:${crafttweaker_version}"
+        }
+    }
+
+    // CraftTweaker reads scripts from <game dir>/scripts; the GameTest server runs in ./run.
+    def scriptSource = file('src/crafttweaker/scripts')
+    def scriptTarget = file('run/scripts')
+    tasks.matching { it.name == 'runGameTestServer' }.configureEach {
+        doFirst {
+            scriptTarget.mkdirs()
+            new File(scriptTarget, 'angelring_test.zs').delete()
+            if(crafttweaker) {
+                scriptSource.listFiles().each { f -> java.nio.file.Files.copy(f.toPath(), new File(scriptTarget, f.name).toPath()) }
+            }
+        }
     }
 }
