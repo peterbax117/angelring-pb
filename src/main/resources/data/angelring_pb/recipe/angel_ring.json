@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    "GIG",
+    "INI",
+    "TET"
+  ],
+  "key": {
+    "G": { "tag": "c:glass_blocks" },
+    "I": { "tag": "c:ingots/gold" },
+    "N": { "tag": "c:nether_stars" },
+    "T": { "item": "minecraft:ghast_tear" },
+    "E": { "item": "minecraft:elytra" }
+  },
+  "result": {
+    "id": "angelring_pb:angel_ring",
+    "count": 1
+  }
+}

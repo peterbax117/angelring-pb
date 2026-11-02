@@ -1,0 +1,152 @@
+package io.github.peterbax117.angelring.gametest;
+
+import io.github.peterbax117.angelring.AngelRing;
+import io.github.peterbax117.angelring.RingFlight;
+import io.github.peterbax117.modtestharness.gametest.HarnessTemplates;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.gametest.framework.GameTest;
+import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.CraftingInput;
+import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.level.GameType;
+import net.neoforged.neoforge.common.NeoForgeMod;
+import net.neoforged.neoforge.common.util.FakePlayer;
+import net.neoforged.neoforge.gametest.GameTestHolder;
+import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+
+import java.util.List;
+
+import static io.github.peterbax117.modtestharness.gametest.GameTestSupport.survivalPlayer;
+
+/**
+ * Server-side tests. They pass with and without Curios (gradlew runGameTestServer -PnoCurios); expectations
+ * that differ check RingFlight.curiosLoaded(). FakePlayers do not tick, so tests call RingFlight.update directly.
+ */
+@GameTestHolder(HarnessTemplates.NAMESPACE)
+@PrefixGameTestTemplate(false)
+public class RingGameTests
+{
+    private static final String TEMPLATE = HarnessTemplates.EMPTY_9X5X9;
+
+    @GameTest(template = TEMPLATE)
+    public static void noRingNoFlight(GameTestHelper helper) {
+        FakePlayer player = player(helper);
+        RingFlight.update(player);
+        helper.assertFalse(player.mayFly(), "Survival player without a ring must not fly");
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE)
+    public static void wornRingGrantsFlight(GameTestHelper helper) {
+        FakePlayer player = player(helper);
+        RingSlot.equip(player);
+        RingFlight.update(player);
+        helper.assertTrue(player.mayFly(), "Wearing the ring should allow flight");
+        helper.assertValueEqual(player.getAttributeValue(NeoForgeMod.CREATIVE_FLIGHT), 1.0, "creative_flight attribute");
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE)
+    public static void removingRingStopsFlying(GameTestHelper helper) {
+        FakePlayer player = player(helper);
+        RingSlot.equip(player);
+        RingFlight.update(player);
+        player.getAbilities().flying = true;
+
+        // Curios caches equip lookups for the current tick, so remove the ring on a later tick as a player would.
+        helper.runAfterDelay(1, () -> {
+            RingSlot.unequip(player);
+            RingFlight.update(player);
+
+            helper.assertFalse(player.mayFly(), "Flight should be removed with the ring (still wearing="
+                    + RingFlight.isWearingRing(player) + ", creative_flight=" + player.getAttributeValue(NeoForgeMod.CREATIVE_FLIGHT)
+                    + ", found in " + RingSlot.describe(player) + ")");
+            helper.assertFalse(player.getAbilities().flying, "Player should stop flying when the ring is removed");
+            helper.succeed();
+        });
+    }
+
+    @GameTest(template = TEMPLATE)
+    public static void ringInInventoryCountsOnlyWithoutCurios(GameTestHelper helper) {
+        FakePlayer player = player(helper);
+        player.getInventory().setItem(5, new ItemStack(AngelRing.ANGEL_RING.get()));
+        RingFlight.update(player);
+        // With Curios the ring must be worn in a curio slot; without Curios, carrying it is enough.
+        helper.assertValueEqual(player.mayFly(), !RingFlight.curiosLoaded(), "flight from a ring in the inventory");
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE)
+    public static void creativeFlightIsNeverRevoked(GameTestHelper helper) {
+        FakePlayer player = player(helper);
+        player.setGameMode(GameType.CREATIVE);
+        RingSlot.equip(player);
+        RingFlight.update(player);
+        player.getAbilities().flying = true;
+
+        helper.runAfterDelay(1, () -> {
+            RingSlot.unequip(player);
+            RingFlight.update(player);
+
+            helper.assertTrue(player.mayFly(), "Creative players keep flight");
+            helper.assertTrue(player.getAbilities().flying, "Creative players keep flying");
+            helper.succeed();
+        });
+    }
+
+    @GameTest(template = TEMPLATE)
+    public static void otherFlightSourcesAreKept(GameTestHelper helper) {
+        FakePlayer player = player(helper);
+        // Another mod granting flight through the same attribute.
+        player.getAttribute(NeoForgeMod.CREATIVE_FLIGHT).addTransientModifier(new AttributeModifier(
+                ResourceLocation.fromNamespaceAndPath("othermod", "flight"), 1, AttributeModifier.Operation.ADD_VALUE));
+        RingSlot.equip(player);
+        RingFlight.update(player);
+
+        helper.runAfterDelay(1, () -> {
+            RingSlot.unequip(player);
+            RingFlight.update(player);
+
+            helper.assertFalse(RingFlight.isWearingRing(player), "Ring should be removed");
+            helper.assertTrue(player.mayFly(), "Removing the ring must not remove flight granted by another source");
+            helper.succeed();
+        });
+    }
+
+    @GameTest(template = TEMPLATE)
+    public static void ringIsTaggedForCuriosRingSlot(GameTestHelper helper) {
+        TagKey<Item> ringTag = TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath("curios", "ring"));
+        helper.assertTrue(new ItemStack(AngelRing.ANGEL_RING.get()).is(ringTag), "Ring should be in the curios:ring tag");
+        if(RingFlight.curiosLoaded()) {
+            helper.assertTrue(RingSlot.hasRingSlot(player(helper)), "Players should have a Curios ring slot");
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE)
+    public static void recipeCraftsRing(GameTestHelper helper) {
+        ItemStack glass = new ItemStack(Items.GLASS);
+        ItemStack gold = new ItemStack(Items.GOLD_INGOT);
+        CraftingInput input = CraftingInput.of(3, 3, List.of(
+                glass, gold, glass,
+                gold, new ItemStack(Items.NETHER_STAR), gold,
+                new ItemStack(Items.GHAST_TEAR), new ItemStack(Items.ELYTRA), new ItemStack(Items.GHAST_TEAR)));
+
+        var recipe = helper.getLevel().getRecipeManager().getRecipeFor(RecipeType.CRAFTING, input, helper.getLevel());
+        helper.assertTrue(recipe.isPresent(), "Angel ring recipe should match");
+        ItemStack result = recipe.get().value().assemble(input, helper.getLevel().registryAccess());
+        helper.assertTrue(result.is(AngelRing.ANGEL_RING.get()), "Recipe should make the angel ring, made " + result);
+        helper.succeed();
+    }
+
+    private static FakePlayer player(GameTestHelper helper) {
+        return survivalPlayer(helper, ItemStack.EMPTY, new BlockPos(4, 1, 4), 0, 0);
+    }
+}

@@ -1,0 +1,100 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.148'
+    id 'idea'
+}
+
+version = "${minecraft_version}-${mod_version}"
+group = mod_group_id
+
+base {
+    archivesName = 'angelring_pb'
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+repositories {
+    maven {
+        name = 'Curios'
+        url = 'https://maven.theillusivec4.top/'
+    }
+}
+
+neoForge {
+    version = project.neo_version
+
+    parchment {
+        mappingsVersion = project.parchment_mappings_version
+        minecraftVersion = project.parchment_minecraft_version
+    }
+
+    runs {
+        client {
+            client()
+        }
+        server {
+            server()
+            programArgument '--nogui'
+        }
+        configureEach {
+            logLevel = org.slf4j.event.Level.INFO
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+    }
+}
+
+configurations {
+    runtimeClasspath.extendsFrom localRuntime
+}
+
+dependencies {
+    // Curios is optional: compile against its API only. Code that touches it is loaded only when Curios is present.
+    compileOnly "top.theillusivec4.curios:curios-neoforge:${curios_version}:api"
+    localRuntime "top.theillusivec4.curios:curios-neoforge:${curios_version}"
+}
+
+var generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
+    var replaceProperties = [
+            minecraft_version_range: minecraft_version_range,
+            neo_version            : neo_version,
+            loader_version_range   : loader_version_range,
+            mod_id                 : mod_id,
+            mod_name               : mod_name,
+            mod_license            : mod_license,
+            mod_version            : project.version,
+    ]
+    inputs.properties replaceProperties
+    expand replaceProperties
+    from 'src/main/templates'
+    into 'build/generated/sources/modMetadata'
+}
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+// GameTests (src/gametest) and client tests (src/clienttest) use neoforge-mod-test-harness from a sibling
+// checkout, or from MOD_TEST_HARNESS_DIR (CI). Without it the mod still builds; only the test tasks are missing.
+def harnessDir = file(System.getenv('MOD_TEST_HARNESS_DIR') ?: '../neoforge-mod-test-harness')
+if(harnessDir.isDirectory()) {
+    apply from: new File(harnessDir, 'gradle/test-harness.gradle')
+
+    // Tests run with Curios by default. Pass -PnoCurios to test the inventory fallback without it.
+    if(!project.hasProperty('noCurios')) {
+        dependencies {
+            gametestRuntimeOnly "top.theillusivec4.curios:curios-neoforge:${curios_version}"
+            clienttestRuntimeOnly "top.theillusivec4.curios:curios-neoforge:${curios_version}"
+        }
+    }
+    dependencies {
+        gametestCompileOnly "top.theillusivec4.curios:curios-neoforge:${curios_version}:api"
+        clienttestCompileOnly "top.theillusivec4.curios:curios-neoforge:${curios_version}:api"
+    }
+}

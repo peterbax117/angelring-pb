@@ -1,0 +1,62 @@
+name: Build and test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+# GameTests and client tests use neoforge-mod-test-harness, checked out into ./harness.
+env:
+  MOD_TEST_HARNESS_DIR: harness
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        curios: [with-curios, without-curios]
+    name: test (${{ matrix.curios }})
+    env:
+      CURIOS_FLAG: ${{ matrix.curios == 'without-curios' && '-PnoCurios' || '' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/checkout@v7
+        with:
+          repository: peterbax117/neoforge-mod-test-harness
+          path: harness
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Build
+        run: ./gradlew build
+
+      - name: Run GameTests
+        run: ./gradlew runGameTestServer $CURIOS_FLAG
+
+      - name: Install virtual display
+        run: sudo apt-get update && sudo apt-get install -y xvfb libgl1-mesa-dri
+
+      - name: Run client tests
+        run: xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew clientTest $CURIOS_FLAG
+
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: client-test-report-${{ matrix.curios }}
+          path: |
+            build/clienttest/report.txt
+            run/clienttest/logs/latest.log
+
+      - if: matrix.curios == 'with-curios'
+        uses: actions/upload-artifact@v7
+        with:
+          name: angelring_pb
+          path: build/libs/*.jar
