@@ -8,8 +8,7 @@ version = "${mod_version}"
 displayName = "${mod_name}"
 authors = "peterbax117"
 description = '''
-A ring that grants creative flight while worn. With Curios installed it goes in the ring slot;
-without Curios it works from anywhere in your inventory.
+A ring that grants creative flight while carried anywhere in your inventory, or worn in the Curios ring slot.
 '''
 
 [[dependencies.${mod_id}]]

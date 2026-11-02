@@ -9,6 +9,7 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -74,13 +75,36 @@ public class RingGameTests
     }
 
     @GameTest(template = TEMPLATE)
-    public static void ringInInventoryCountsOnlyWithoutCurios(GameTestHelper helper) {
-        FakePlayer player = player(helper);
-        player.getInventory().setItem(5, new ItemStack(AngelRing.ANGEL_RING.get()));
-        RingFlight.update(player);
-        // With Curios the ring must be worn in a curio slot; without Curios, carrying it is enough.
-        helper.assertValueEqual(player.mayFly(), !RingFlight.curiosLoaded(), "flight from a ring in the inventory");
+    public static void ringCarriedAnywhereGrantsFlight(GameTestHelper helper) {
+        // Main inventory, hotbar, selected hand and off hand all count, with or without Curios.
+        for(int slot : new int[]{20, 3, 0}) {
+            FakePlayer player = player(helper);
+            player.getInventory().selected = 0;
+            player.getInventory().setItem(slot, new ItemStack(AngelRing.ANGEL_RING.get()));
+            RingFlight.update(player);
+            helper.assertTrue(player.mayFly(), "Ring in inventory slot " + slot + " should allow flight");
+        }
+        FakePlayer offhand = player(helper);
+        offhand.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(AngelRing.ANGEL_RING.get()));
+        RingFlight.update(offhand);
+        helper.assertTrue(offhand.mayFly(), "Ring in the off hand should allow flight");
         helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE)
+    public static void droppingCarriedRingStopsFlying(GameTestHelper helper) {
+        FakePlayer player = player(helper);
+        player.getInventory().setItem(20, new ItemStack(AngelRing.ANGEL_RING.get()));
+        RingFlight.update(player);
+        player.getAbilities().flying = true;
+
+        helper.runAfterDelay(1, () -> {
+            player.getInventory().setItem(20, ItemStack.EMPTY);
+            RingFlight.update(player);
+            helper.assertFalse(player.mayFly(), "Flight should end when the carried ring is gone");
+            helper.assertFalse(player.getAbilities().flying, "Player should stop flying");
+            helper.succeed();
+        });
     }
 
     @GameTest(template = TEMPLATE)

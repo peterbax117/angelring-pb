@@ -3,8 +3,9 @@
 A NeoForge 1.21.1 mod that adds the **Angel Ring**: wear it and you can fly like in creative mode. Double-tap
 jump to take off.
 
-- **With [Curios](https://www.curseforge.com/minecraft/mc-mods/curios)** the ring goes in the Curios `ring` slot.
-- **Without Curios** the ring works from anywhere in your inventory, including the off hand.
+The ring works from anywhere you carry it: any inventory or hotbar slot, your main or off hand, or, with
+[Curios](https://www.curseforge.com/minecraft/mc-mods/curios) installed, the Curios `ring` slot so it does not take
+up inventory space.
 
 Flight is free while the ring is worn. Remove it and you stop flying and fall.
 

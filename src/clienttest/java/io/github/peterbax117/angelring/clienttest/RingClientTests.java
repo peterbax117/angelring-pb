@@ -54,6 +54,21 @@ public final class RingClientTests
         check(ctx.onClient(() -> ctx.mc().player.getY()) < airborneY, "Player should have fallen");
     }
 
+    @ClientTest(value = "ring carried in the hotbar lets a survival player fly", order = 3)
+    public static void hotbarRingGrantsFlight(ClientTestContext ctx) {
+        prepareSurvival(ctx);
+        // Hotbar slot 3, not the selected slot, and not a Curios slot even when Curios is installed.
+        ctx.onServerDo(p -> {
+            p.getInventory().setItem(3, new ItemStack(AngelRing.ANGEL_RING.get()));
+            p.inventoryMenu.broadcastChanges();
+        });
+        ctx.await("client to see flight from a carried ring", () -> ctx.mc().player.mayFly());
+
+        doubleTapJump(ctx);
+        ctx.await("client player to start flying", () -> ctx.mc().player.getAbilities().flying);
+        ctx.await("server to accept flying", () -> ctx.onServer(p -> p.getAbilities().flying));
+    }
+
     // Helpers
 
     private static void prepareSurvival(ClientTestContext ctx) {

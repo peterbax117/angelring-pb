@@ -55,9 +55,9 @@ public final class RingFlight
         }
     }
 
-    /** With Curios, only the curio slots count; without it, anywhere in the inventory including the off hand. */
+    /** Worn in a Curios slot (when Curios is installed), or carried anywhere in the inventory, hotbar or off hand. */
     public static boolean isWearingRing(Player player) {
-        if(curiosLoaded()) return CuriosCompat.isEquipped(player, AngelRing.ANGEL_RING.get());
+        if(curiosLoaded() && CuriosCompat.isEquipped(player, AngelRing.ANGEL_RING.get())) return true;
         for(ItemStack stack : player.getInventory().items) if(stack.is(AngelRing.ANGEL_RING)) return true;
         for(ItemStack stack : player.getInventory().offhand) if(stack.is(AngelRing.ANGEL_RING)) return true;
         return false;
