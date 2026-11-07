@@ -6,6 +6,7 @@ import io.github.peterbax117.modtestharness.client.ClientTest;
 import io.github.peterbax117.modtestharness.client.ClientTestContext;
 import io.github.peterbax117.modtestharness.client.ClientTestHolder;
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
@@ -75,6 +76,14 @@ public final class RingClientTests
         if(!ModList.get().isLoaded("jei")) return;
         ctx.await("JEI runtime to be available", 60, () -> JeiProbe.ready());
         check(ctx.onClient(() -> JeiProbe.ringHasInfoPage()), "JEI should list an information page for the Angel Ring");
+    }
+
+    @ClientTest(value = "crafting table crafts the ring from its recipe (saves recipe-angel_ring.png)", order = 5)
+    public static void recipeScreenshot(ClientTestContext ctx) {
+        ItemStack result = ctx.showCraftingRecipe(ResourceLocation.fromNamespaceAndPath(AngelRing.MODID, "angel_ring"));
+        check(result.is(AngelRing.ANGEL_RING.get()), "Recipe should craft the Angel Ring, got " + result);
+        ctx.screenshotContainer("recipe-angel_ring");
+        ctx.closeContainer();
     }
 
     // Helpers
