@@ -74,7 +74,8 @@ git push origin v1.0.0
 ## Credits
 
 - The original Angel Ring is from **Extra Utilities** by RWTema. This recipe follows its 1.7.10 layout with
-  vanilla substitutes.
+  vanilla substitutes. The item texture is an original design inspired by its small winged ring icon; no
+  Extra Utilities assets are included.
 - [Angel Ring](https://github.com/DenisMasterHerobrine/AngelRing) by DenisMasterHerobrine (MIT) was the reference
   for Curios integration. This mod is a separate implementation and shares no code with it.
 
