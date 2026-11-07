@@ -1,6 +1,7 @@
 plugins {
     id 'java-library'
     id 'net.neoforged.moddev' version '2.0.148'
+    id 'me.modmuss50.mod-publish-plugin' version '2.2.1'
     id 'idea'
 }
 
@@ -86,6 +87,28 @@ neoForge.ideSyncTask generateModMetadata
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
+}
+
+// CurseForge release, run by .github/workflows/release.yml on a version tag (see README "Releasing").
+// Without CURSEFORGE_TOKEN or curseforge_project_id this is a dry run that writes to build/publishMods instead.
+def curseforgeProjectId = providers.gradleProperty('curseforge_project_id').getOrElse('')
+publishMods {
+    file = jar.archiveFile
+    displayName = "${mod_name} ${project.version}"
+    changelog = providers.environmentVariable('CHANGELOG').orElse('See https://github.com/peterbax117/angelring-pb/releases')
+    type = STABLE
+    modLoaders.add('neoforge')
+    dryRun = providers.environmentVariable('CURSEFORGE_TOKEN').getOrNull() == null || curseforgeProjectId.isEmpty()
+
+    curseforge {
+        accessToken = providers.environmentVariable('CURSEFORGE_TOKEN')
+        projectId = curseforgeProjectId
+        minecraftVersions.add(minecraft_version)
+        javaVersions.add(JavaVersion.VERSION_21)
+        client = true
+        server = true
+        optional('curios', 'jei')
+    }
 }
 
 // GameTests (src/gametest) and client tests (src/clienttest) use neoforge-mod-test-harness from a sibling

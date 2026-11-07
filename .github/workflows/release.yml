@@ -1,0 +1,54 @@
+name: Release
+
+# Push a tag v<mod_version> (for example v1.0.0) to run the full test matrix and publish to CurseForge.
+# The tag message becomes the CurseForge changelog.
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  test:
+    uses: ./.github/workflows/build.yml
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check release inputs
+        env:
+          CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+        run: |
+          expected="v$(grep '^mod_version=' gradle.properties | cut -d= -f2 | tr -d '\r')"
+          if [ "$GITHUB_REF_NAME" != "$expected" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match $expected from gradle.properties"; exit 1
+          fi
+          if [ -z "$(grep '^curseforge_project_id=' gradle.properties | cut -d= -f2 | tr -d '\r')" ]; then
+            echo "::error::curseforge_project_id is blank in gradle.properties"; exit 1
+          fi
+          if [ -z "$CURSEFORGE_TOKEN" ]; then
+            echo "::error::CURSEFORGE_TOKEN repository secret is not set"; exit 1
+          fi
+
+      - name: Read changelog from the tag
+        run: |
+          git fetch --force origin "refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME"
+          {
+            echo 'CHANGELOG<<CHANGELOG_EOF'
+            git tag -l --format='%(contents:subject)%0a%0a%(contents:body)' "$GITHUB_REF_NAME"
+            echo 'CHANGELOG_EOF'
+          } >> "$GITHUB_ENV"
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Publish to CurseForge
+        env:
+          CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+        run: ./gradlew publishMods

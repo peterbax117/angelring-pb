@@ -1,4 +1,4 @@
-# Angel Ring
+# Angel Ring Reborn
 
 A NeoForge 1.21.1 mod that adds the **Angel Ring**: wear it and you can fly like in creative mode. Double-tap
 jump to take off.
@@ -55,6 +55,21 @@ gradlew clientTest                            # with Curios and JEI (also checks
 Tests use [neoforge-mod-test-harness](https://github.com/peterbax117/neoforge-mod-test-harness), cloned next to
 this repository. Without it the mod still builds; only the test tasks are missing. CI runs the three setups as a
 matrix.
+
+## Releasing
+
+Published on CurseForge as **Angel Ring Reborn**. One-time setup: set `curseforge_project_id` in
+`gradle.properties` and add a `CURSEFORGE_TOKEN` repository secret (CurseForge account, API tokens).
+
+To release, bump `mod_version`, commit, then push an annotated tag whose message is the changelog:
+
+```
+git tag -a v1.0.0 -m "First release"
+git push origin v1.0.0
+```
+
+`.github/workflows/release.yml` runs the full test matrix, then `gradlew publishMods`. Locally, without a token,
+`gradlew publishMods` is a dry run that writes the upload to `build/publishMods`.
 
 ## Credits
 

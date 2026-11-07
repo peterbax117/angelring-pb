@@ -2,8 +2,11 @@ name: Build and test
 
 on:
   push:
+    branches: ['**']
   pull_request:
   workflow_dispatch:
+  # release.yml runs the full matrix before publishing.
+  workflow_call:
 
 # GameTests and client tests use neoforge-mod-test-harness, checked out into ./harness.
 env:
