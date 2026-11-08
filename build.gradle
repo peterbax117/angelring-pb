@@ -89,16 +89,20 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
 
-// CurseForge release, run by .github/workflows/release.yml on a version tag (see README "Releasing").
-// Without CURSEFORGE_TOKEN or curseforge_project_id this is a dry run that writes to build/publishMods instead.
+// CurseForge and Modrinth release, run by .github/workflows/release.yml (see README "Releasing").
+// Without tokens or project ids this is a dry run that writes to build/publishMods instead.
+// publishMods uploads to both sites; publishCurseforge and publishModrinth upload to one.
 def curseforgeProjectId = providers.gradleProperty('curseforge_project_id').getOrElse('')
+def modrinthProjectId = providers.gradleProperty('modrinth_project_id').getOrElse('')
+def curseforgeReady = !providers.environmentVariable('CURSEFORGE_TOKEN').getOrElse('').isEmpty() && !curseforgeProjectId.isEmpty()
+def modrinthReady = !providers.environmentVariable('MODRINTH_TOKEN').getOrElse('').isEmpty() && !modrinthProjectId.isEmpty()
 publishMods {
     file = jar.archiveFile
     displayName = "${mod_name} ${project.version}"
     changelog = providers.environmentVariable('CHANGELOG').orElse('See https://github.com/peterbax117/angelring-pb/releases')
     type = STABLE
     modLoaders.add('neoforge')
-    dryRun = providers.environmentVariable('CURSEFORGE_TOKEN').getOrNull() == null || curseforgeProjectId.isEmpty()
+    dryRun = !curseforgeReady && !modrinthReady
 
     curseforge {
         accessToken = providers.environmentVariable('CURSEFORGE_TOKEN')
@@ -107,6 +111,13 @@ publishMods {
         javaVersions.add(JavaVersion.VERSION_21)
         client = true
         server = true
+        optional('curios', 'jei')
+    }
+
+    modrinth {
+        accessToken = providers.environmentVariable('MODRINTH_TOKEN')
+        projectId = modrinthProjectId
+        minecraftVersions.add(minecraft_version)
         optional('curios', 'jei')
     }
 }

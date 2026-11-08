@@ -58,8 +58,10 @@ matrix.
 
 ## Releasing
 
-Published on CurseForge as **Angel Ring Reborn**. One-time setup: set `curseforge_project_id` in
-`gradle.properties` and add a `CURSEFORGE_TOKEN` repository secret (CurseForge account, API tokens).
+Published on CurseForge and Modrinth as **Angel Ring Reborn**. One-time setup: set `curseforge_project_id` and
+`modrinth_project_id` in `gradle.properties`, and add `CURSEFORGE_TOKEN` (CurseForge account, API tokens) and
+`MODRINTH_TOKEN` (Modrinth settings, Personal access tokens, with the Create, Read and Write versions scopes)
+repository secrets.
 
 To release, bump `mod_version`, commit, then push an annotated tag whose message is the changelog:
 
@@ -68,8 +70,11 @@ git tag -a v1.0.0 -m "First release"
 git push origin v1.0.0
 ```
 
-`.github/workflows/release.yml` runs the full test matrix, then `gradlew publishMods`. Locally, without a token,
-`gradlew publishMods` is a dry run that writes the upload to `build/publishMods`.
+`.github/workflows/release.yml` runs the full test matrix, then `gradlew publishMods`, which uploads to both sites.
+To publish the current `mod_version` to one site only (for example to add an existing release to Modrinth), run
+the Release workflow manually and pick the target; the tag `v<mod_version>` must already exist.
+
+Locally, without tokens, `gradlew publishMods` is a dry run that writes the uploads to `build/publishMods`.
 
 ## Credits
 
