@@ -82,7 +82,7 @@ public final class RingClientTests
     public static void recipeScreenshot(ClientTestContext ctx) {
         ItemStack result = ctx.showCraftingRecipe(ResourceLocation.fromNamespaceAndPath(AngelRing.MODID, "angel_ring"));
         check(result.is(AngelRing.ANGEL_RING.get()), "Recipe should craft the Angel Ring, got " + result);
-        ctx.screenshotContainer("recipe-angel_ring");
+        ctx.screenshotCraftingGrid("recipe-angel_ring");
         ctx.closeContainer();
     }
 
